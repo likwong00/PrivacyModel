@@ -2,204 +2,249 @@ from mesa import Agent, Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
+import networkx as nx
+import numpy as np
+import pandas as pd
 
-NUM_OF_AGENTS = 1000
+NUM_OF_AGENTS = 100
 
 # PLACES
-HOME = 0
-BEACH = 1
-MUSEUM = 2
-COMPANY = 3
-SURGERY = 4
-EXAM = 5
-COMPETITION = 6
-FUNERAL = 7
-TYPHOON = 8
-SPEED_TICKET = 9
+BEACH = 0
+MUSEUM = 1
+COMPANY = 2
+SURGERY = 3
+EXAM = 4
+COMPETITION = 5
+FUNERAL = 6
+TYPHOON = 7
+SPEED_TICKET = 8
+
+# Storing attributes for each place
+# format- 'place': [pleasure, recognition, privacy, security]
+places_dict = {
+    'BEACH': [5, 5, 1, 1],
+    'MUSEUM': [4, 4, 2, 2],
+    'COMPANY': [2, 1, 4, 4],
+    'SURGERY': [0, 0, 5, 4],
+    'EXAM': [1, 2, 3, 3],
+    'COMPETITION': [5, 5, 0, 0],
+    'FUNERAL': [0, 1, 4, 5],
+    'TYPHOON': [4, 2, 3, 5],
+    'SPEED_TICKET': [1, 0, 4, 5]
+}
+places = pd.DataFrame(data=places_dict, index=['pleasure', 'recognition', 'privacy', 'security'])
 
 
-# INFECTION STATES
-NOT_INFECTED = 0
-INFECTED_A = 1
-INFECTED_S = 2
-CRITICAL = 3
-CURED = 4
-DECEASED = 5
+# Since in the model, each place has a cord and in the df its all in string, need a function to map a cord to a
+# corresponding location
+def map_cords_to_places(cords):
+    if cords == (0, 0):
+        return 'BEACH'
+    elif cords == (1, 0):
+        return 'MUSEUM'
+    elif cords == (2, 0):
+        return 'COMPANY'
+    elif cords == (3, 0):
+        return 'SURGERY'
+    elif cords == (4, 0):
+        return 'EXAM'
+    elif cords == (5, 0):
+        return 'COMPETITION'
+    elif cords == (6, 0):
+        return 'FUNERAL'
+    elif cords == (7, 0):
+        return 'TYPHOON'
+    elif cords == (8, 0):
+        return 'SPEED_TICKET'
 
-# Capacity of quarantine center
-QC_LIMIT = 100 # Capacity of quarantine center
+
+# ACTIONS
+SHARE_NO = 0
+SHARE_FRIENDS = 1
+SHARE_PUBLIC = 2
+
+# Storing constants for each action
+# format- 'action': [pleasure, recognition, privacy, security]
+actions_dict = {
+    'SHARE_NO': [0, 0, 2, 2],
+    'SHARE_FRIENDS': [2, 1, 0.5, 1],
+    'SHARE_PUBLIC': [2, 2, 0, 0],
+}
+actions = pd.DataFrame(data=actions_dict, index=['pleasure', 'recognition', 'privacy', 'security'])
+
+
+# history dataframe
+# AgentID, othersID[], placeID, actionID, happiness, timestep
+# 1, [2, 3], 1, 1, 0, 1
+# 2, [1, 3], 1, 1, 1, 1
+# 3, [1, 2], 1, 0, 0, 1
 
 class HumanAgent(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
-        self.homeId = unique_id // 4
         self.pleasure = self.random.uniform(0, 1)
         self.privacy = self.random.uniform(0, 1)
         self.recognition = self.random.uniform(0, 1)
         self.security = self.random.uniform(0, 1)
+        self.happy = False  # happiness is a boolean, true or false
+        self.currentAction = SHARE_NO
+        self.friends = self.model.relationship.neighbors(unique_id)
 
     def step(self):
-        self.updateHealth()
+        self.decision()
         self.move()
 
     # Function for mobility pattern modeling
 
     def move(self):
-        x, y = self.pos
+        x = self.pos
 
         # Might need y later
         newY = 0
 
-        p = self.random.uniform(0,1)
+        p = self.random.uniform(0, 1)
         # Chance of each place is uniform
-        if p <= (1/8):
+        if p <= (1 / 9):
             newX = BEACH
-        elif p <= (2/8):
+        elif p <= (2 / 9):
             newX = MUSEUM
-        elif p <= (3/8):
+        elif p <= (3 / 9):
             newX = COMPANY
-        elif p <= (4/8):
+        elif p <= (4 / 9):
             newX = SURGERY
-        elif p <= (5/8):
+        elif p <= (5 / 9):
             newX = EXAM
-        elif p <= (6/8):
+        elif p <= (6 / 9):
             newX = COMPETITION
-        elif p <= (7/8):
+        elif p <= (7 / 9):
             newX = FUNERAL
+        elif p <= (8 / 9):
+            newX = TYPHOON
         else:
             newX = SPEED_TICKET
         self.model.grid.move_agent(self, (newX, newY))
 
-    # Function for modeling the spread of the virus
+    # Function for the decision making process of the agent
+    # At each given location, the agent decides whether or not it wants to share a photo with the public,
+    # common friends, or no one.
+    def decision(self):
+        location = self.pos
+        str_location = map_cords_to_places(location)
 
-    def updateHealth(self):
-        p = self.random.uniform(0, 1)
-        if self.health == INFECTED_A and p > 0.75:
-            self.health += 1
-        elif self.health == INFECTED_S:
-            if p > 0.75 and p <= 0.85:
-                self.health += 1
-            elif p > 0.85:
-                self.health = CURED
-                x, y = self.pos
-                if x == QC:
-                    self.model.QC_Occupancy -= 1
-        elif self.health == CRITICAL:
-            if p > 0.75 and p <= 0.95:
-                self.health += 1
-                x, y = self.pos
-                if x == QC:
-                    self.model.QC_Occupancy -= 1
-            elif p > 0.95:
-                self.health = DECEASED
-                self.model.deceasedCount += 1
-                x, y = self.pos
-                if x == QC:
-                    self.model.QC_Occupancy -= 1
+        actions_values = self.processLocation(str_location)
+        # actions = self.processCompanions(preferences, location)
+
+        # Determine which action to take
+        # Basic version: add up all the values in each row, and see which one is largest
+        no_values = actions_values.loc[:, 'SHARE_NO']
+        friends_values = actions_values.loc[:, 'SHARE_FRIENDS']
+        public_values = actions_values.loc[:, 'SHARE_PUBLIC']
+
+        best_action = max(no_values.sum(),
+                          friends_values.sum(),
+                          public_values.sum())
+
+        if best_action == no_values.sum():
+            self.currentAction = SHARE_NO
+        elif best_action == friends_values.sum():
+            self.currentAction = SHARE_FRIENDS
+        elif best_action == public_values.sum():
+            self.currentAction = SHARE_PUBLIC
+
+        # Check if the agent is happy with the action taken
+        # best_action is an int from 0 to 40, we determine an agent to be happy if it is greater than 10
+        if best_action > 10:
+            self.happy = True
+        else:
+            self.happy = False
+
+    # Function for agents to evaluate their preferences in a given location, returns an array of with attributes of
+    # each actions
+    def processLocation(self, location):
+        attributes = places.loc[:, location]
+
+        # Calculate the new values with places_attribute * agent_attribute, then return all of it as an array
+        preferences = pd.Series(data=[self.pleasure, self.recognition, self.privacy, self.security],
+                                index=places.index)
+        new_preferences = pd.Series(data=(preferences.values * attributes.values), index=places.index)
+
+        # Compute the values of each action, action_values * new_preference.values
+        # Format:
+        #               SHARE_NO SHARE_FRIENDS SHARE_PUBLIC
+        # pleasure         x          x             x
+        # recognition      x          x             x
+        # privacy          x          x             x
+        # security         x          x             x
+        no_values = actions.loc[:, 'SHARE_NO']
+        friend_values = actions.loc[:, 'SHARE_FRIENDS']
+        public_values = actions.loc[:, 'SHARE_PUBLIC']
+        actions_values = pd.DataFrame(data={'SHARE_NO': (no_values * new_preferences.values),
+                                            'SHARE_FRIENDS': (friend_values * new_preferences.values),
+                                            'SHARE_PUBLIC': (public_values * new_preferences.values)},
+                                      index=actions.index, columns=actions.columns)
+        return actions_values
+
+    # Function for checking if anyone in the agent's social circle is in the same location, alter the values for actions
+    # based on companion's preferences if necessary
+    def processCompanions(self, preferences, location):
+
+        # Loop through every friend and see if they are in the same location
+        for x in self.friends:
+            if x.pos == location:
+                return
+
+    # Function for agents to learn if their actions are "upsetting" others
+    def feedback(self):
         return
 
-    def infect(self):
-        p = self.random.uniform(0, 1)
-        if self.health == NOT_INFECTED and p > self.model.p0b:
-            self.health += 1
 
-
-def compute_infected(model):
-    infectedAgents = [agent for agent in model.schedule.agents if agent.health in (INFECTED_A, INFECTED_S, CRITICAL)]
-    return len(infectedAgents)
+# External function for counting how many happy agents are there
+def count_happy(model):
+    happy_agents = [agent for agent in model.schedule.agents if agent.happy is True]
+    return len(happy_agents)
 
 
 class PrivacyModel(Model):
     """A model with some number of agents."""
 
-    def __init__(self, N, startingState, quarantine=False, socialDistancing=False):
+    def __init__(self, N, num_of_friends, rewire):
         self.num_agents = N
-        # self.random.seed(42)
-        self.QC_Occupancy = 0
-        self.deceasedCount = 0
-        self.quarantine = quarantine
-        self.grid = MultiGrid(4 if quarantine else 3, 250, False)
+        self.random.seed(42)
+        self.grid = MultiGrid(9, 1, False)
         self.schedule = RandomActivation(self)
         self.running = True
 
-        # With socialdistancing the probability of infection is 10% (p0b = 0.9) otherwise it is 50%
-        self.p0b = 0.5
-
-        ###########
-        # HINT: 
-        # You need to update the the next if block to correctly set infection probability when social distancing is TRUE
-        # You need to change quarantine center capacity too
-        ###########
-        if socialDistancing:
-            self.p0b = 0.9
-        else:
-            self.p0b = 0.5
-        ###########
+        # Initialise relationship between agents as a Watts-Strogatz graph
+        self.relationship = nx.watts_strogatz_graph(N, num_of_friends, rewire)
 
         # Create agents
         for i in range(self.num_agents):
             a = HumanAgent(i, self)
             self.schedule.add(a)
-            self.grid.place_agent(a, (HOME, a.homeId))
-        for a in self.random.sample(self.schedule.agents, int(startingState * N)):
-            a.health = INFECTED_A
+            # Start off with every agent in beach
+            self.grid.place_agent(a, (BEACH, 0))
         self.datacollector = DataCollector(
-            model_reporters={"Infected": compute_infected,
-                             "QC_Occupancy": "QC_Occupancy"}
+            model_reporters={"Happiness": count_happy}
         )
 
     def step(self):
         self.datacollector.collect(self)
         '''Advance the model by one step.'''
         self.schedule.step()
-        self.identifyAgentsAndUpdateSpread()
-
-    def identifyAgentsAndUpdateSpread(self):
-        # Park
-        for y in range(2):
-            agents = self.grid.get_cell_list_contents([(PARK, y)])
-            self.updateSpread(agents)
-        # Grocery
-        for y in range(5):
-            agents = self.grid.get_cell_list_contents([(GROCERY, y)])
-            self.updateSpread(agents)
-        # Home
-        for y in range(250):
-            agents = self.grid.get_cell_list_contents([(HOME, y)])
-            self.updateSpread(agents)
-
-    def updateSpread(self, agents):
-        if any(a.health in (INFECTED_A, INFECTED_S, CRITICAL) for a in agents):
-            [a.infect() for a in agents]
 
 
-def runSimulation(startingState, quarantine=False, socialDistancing=False):
-    modelInst = CovidModel(NUM_OF_AGENTS, startingState, quarantine, socialDistancing)
-    i = 0
-    while any(a.health in (INFECTED_A, INFECTED_S, CRITICAL) for a in modelInst.schedule.agents):
-        i += 1
-        modelInst.step()
-    modelDF = modelInst.datacollector.get_model_vars_dataframe()
+def run_simulation(steps, num_of_friends, rewire):
+    model_inst = PrivacyModel(NUM_OF_AGENTS, num_of_friends, rewire)
+    for i in range(steps):
+        model_inst.step()
+    modelDF = model_inst.datacollector.get_model_vars_dataframe()
 
-    return i, modelInst.deceasedCount, modelDF.QC_Occupancy, modelDF.Infected
+    return modelDF.Happiness
 
-StartingState = 0.1
-quarantine=False
-socialDistancing=False
 
-averageDays = 0
-dayWithMaxInfectionRate = 0
-maxInfection = 0
-averageCasualties = 0
-for i in range(10):
-    days, Casualties, QC_Occupancy, Infected = runSimulation(StartingState,quarantine,socialDistancing)
-    averageDays+=days
-    dayWithMaxInfectionRate+=Infected.idxmax()
-    maxInfection += Infected.max()
-    averageCasualties += Casualties
-    if i == 9:
-        # QC_Occupancy.plot(legend=True)
-        Infected.plot(legend=True)
-print('Average number of days before stabilization: ' + str(averageDays/10))
-print('Average of the Day with peak Infection ('+str(maxInfection/10)+'): ' + str(dayWithMaxInfectionRate/10))
-print('Average Number of Casualties: ' + str(averageCasualties/10))
+steps = 100
+num_of_friends = 6
+rewire = 0.1
+
+total_happiness = run_simulation(steps, num_of_friends, rewire)
+print('Total happiness after ' + str(steps) + ' steps: ' + str(total_happiness/NUM_OF_AGENTS))

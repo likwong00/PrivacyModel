@@ -5,6 +5,7 @@ from mesa.datacollection import DataCollector
 import networkx as nx
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 NUM_OF_AGENTS = 100
 
@@ -67,7 +68,7 @@ SHARE_PUBLIC = 2
 # format- 'action': [pleasure, recognition, privacy, security]
 actions_dict = {
     'SHARE_NO': [0, 0, 2, 2],
-    'SHARE_FRIENDS': [2, 1, 0.5, 1],
+    'SHARE_FRIENDS': [1, 1, 0.5, 1],
     'SHARE_PUBLIC': [2, 2, 0, 0],
 }
 actions = pd.DataFrame(data=actions_dict, index=['pleasure', 'recognition', 'privacy', 'security'])
@@ -88,7 +89,7 @@ class HumanAgent(Agent):
         self.security = self.random.uniform(0, 1)
         self.happy = False  # happiness is a boolean, true or false
         self.currentAction = SHARE_NO
-        self.friends = self.model.relationship.neighbors(unique_id)
+        self.friends = self.model.relationship.adj[unique_id]
 
     def step(self):
         self.decision()
@@ -132,24 +133,27 @@ class HumanAgent(Agent):
         str_location = map_cords_to_places(location)
 
         actions_values = self.processLocation(str_location)
-        # actions = self.processCompanions(preferences, location)
 
         # Determine which action to take
         # Basic version: add up all the values in each row, and see which one is largest
-        no_values = actions_values.loc[:, 'SHARE_NO']
-        friends_values = actions_values.loc[:, 'SHARE_FRIENDS']
-        public_values = actions_values.loc[:, 'SHARE_PUBLIC']
+        no_value = (actions_values.loc[:, 'SHARE_NO']).sum()
+        friends_value = (actions_values.loc[:, 'SHARE_FRIENDS']).sum()
+        public_value = (actions_values.loc[:, 'SHARE_PUBLIC']).sum()
 
-        best_action = max(no_values.sum(),
-                          friends_values.sum(),
-                          public_values.sum())
+        self.processCompanions(location, no_value, friends_value, public_value)
 
-        if best_action == no_values.sum():
+        best_action = max(no_value,
+                          friends_value,
+                          public_value)
+
+        if best_action == no_value:
             self.currentAction = SHARE_NO
-        elif best_action == friends_values.sum():
+        elif best_action == friends_value:
             self.currentAction = SHARE_FRIENDS
-        elif best_action == public_values.sum():
+        elif best_action == public_value:
             self.currentAction = SHARE_PUBLIC
+
+        # After an agent has decided what action to take, check companion's action as well
 
         # Check if the agent is happy with the action taken
         # best_action is an int from 0 to 40, we determine an agent to be happy if it is greater than 10
@@ -170,7 +174,7 @@ class HumanAgent(Agent):
 
         # Compute the values of each action, action_values * new_preference.values
         # Format:
-        #               SHARE_NO SHARE_FRIENDS SHARE_PUBLIC
+        #               SHARE_N  SHARE_FRIENDS SHARE_PUBLIC
         # pleasure         x          x             x
         # recognition      x          x             x
         # privacy          x          x             x
@@ -186,12 +190,26 @@ class HumanAgent(Agent):
 
     # Function for checking if anyone in the agent's social circle is in the same location, alter the values for actions
     # based on companion's preferences if necessary
-    def processCompanions(self, preferences, location):
+    def processCompanions(self, location, no_value, friends_value, public_value):
 
-        # Loop through every friend and see if they are in the same location
-        for x in self.friends:
-            if x.pos == location:
-                return
+        # Get all agents that are friends and in the same location with the user
+        current_companions = [agent for agent in self.model.schedule.agents
+                              if agent.unique_id in self.friends and agent.pos == location]
+
+        # Look through other companion's preferences, then tweak values for actions accordingly
+        for i in current_companions:
+            if i.pleasure > 0.5:
+                friends_value += 2
+                public_value += 2
+            if i.recognition > 0.5:
+                public_value += 2
+            if i.privacy > 0.5:
+                no_value += 2
+            if i.security > 0.5:
+                friends_value += 1
+                no_value += 2
+
+        return no_value, friends_value, public_value
 
     # Function for agents to learn if their actions are "upsetting" others
     def feedback(self):
@@ -207,9 +225,9 @@ def count_happy(model):
 class PrivacyModel(Model):
     """A model with some number of agents."""
 
-    def __init__(self, N, num_of_friends, rewire):
+    def __init__(self, N, num_of_friends=6, rewire=0.1):
         self.num_agents = N
-        self.random.seed(42)
+        # self.random.seed(42)
         self.grid = MultiGrid(9, 1, False)
         self.schedule = RandomActivation(self)
         self.running = True
@@ -221,8 +239,9 @@ class PrivacyModel(Model):
         for i in range(self.num_agents):
             a = HumanAgent(i, self)
             self.schedule.add(a)
-            # Start off with every agent in beach
-            self.grid.place_agent(a, (BEACH, 0))
+            # Start off with every agent in a random place
+            random_place = self.random.randint(0, 8)
+            self.grid.place_agent(a, (random_place, 0))
         self.datacollector = DataCollector(
             model_reporters={"Happiness": count_happy}
         )
@@ -233,8 +252,8 @@ class PrivacyModel(Model):
         self.schedule.step()
 
 
-def run_simulation(steps, num_of_friends, rewire):
-    model_inst = PrivacyModel(NUM_OF_AGENTS, num_of_friends, rewire)
+def run_simulation(steps):
+    model_inst = PrivacyModel(NUM_OF_AGENTS)
     for i in range(steps):
         model_inst.step()
     modelDF = model_inst.datacollector.get_model_vars_dataframe()
@@ -242,9 +261,10 @@ def run_simulation(steps, num_of_friends, rewire):
     return modelDF.Happiness
 
 
-steps = 100
-num_of_friends = 6
-rewire = 0.1
+steps = 10
 
-total_happiness = run_simulation(steps, num_of_friends, rewire)
+total_happiness = run_simulation(steps)
 print('Total happiness after ' + str(steps) + ' steps: ' + str(total_happiness/NUM_OF_AGENTS))
+
+
+

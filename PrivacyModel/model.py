@@ -6,17 +6,29 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import csv
 
 # Import all the different types of agents
 from agents.BasicAgent import BasicAgent
+from agents.MajorityAgent import MajorityAgent
 from agents.EpsilonAgent import EpsilonAgent
 
 NUM_OF_AGENTS = 50
 
-# External function for counting how many happy agents are there
+# External metric functions
 def average_happy(model):
     happy_agents = [agent.happy for agent in model.schedule.agents]
-    return sum(happy_agents)
+    return sum(happy_agents) / NUM_OF_AGENTS
+
+
+def max_happy(model):
+    all_agents = [agent.happy for agent in model.schedule.agents]
+    return max(all_agents)
+
+
+def min_happy(model):
+    all_agents = [agent.happy for agent in model.schedule.agents]
+    return min(all_agents)
 
 
 class PrivacyModel(Model):
@@ -43,7 +55,9 @@ class PrivacyModel(Model):
             random_place = self.random.randint(0, 8)
             self.grid.place_agent(a, (random_place, 0))
         self.datacollector = DataCollector(
-            model_reporters={"Happiness": average_happy}
+            model_reporters={"Average_Happiness": average_happy,
+                             "Max_Happiness": max_happy,
+                             "Min_Happiness": min_happy}
         )
 
     def step(self):
@@ -61,10 +75,38 @@ def run_simulation(steps, agent_model):
         model_inst.step()
     modelDF = model_inst.datacollector.get_model_vars_dataframe()
 
-    return modelDF.Happiness
+    return modelDF
 
 
-steps = 10
+# Function for writing the results of a agent model into a .csv file
+def write_results(df, agent):
+    with open('./results/' + agent + '_results.csv', 'w', newline='') as file:
+        i = 0
+        writer = csv.writer(file)
+        for row in df.iterrows():
+            writer.writerow([i, row[1][0], row[1][1], row[1][2]])
+            i += 1
 
-total_happiness = run_simulation(steps, BasicAgent)
-print('Total happiness after ' + str(steps) + ' steps: ' + str(total_happiness / NUM_OF_AGENTS))
+# Main function for running all agent models, then write all their results on their respective .csv files
+def run_all_agents(steps):
+    basic = run_simulation(steps, BasicAgent)
+    write_results(basic, 'basic')
+
+    majority = run_simulation(steps, MajorityAgent)
+    write_results(majority, 'majority')
+
+    learning = run_simulation(steps, EpsilonAgent)
+    write_results(learning, 'learning')
+
+
+steps = 1000
+
+run_all_agents(steps)
+
+# one more level of average - run simulation multiple times
+# check when a plot stabilises, so we can stop earlier
+# check for violating norms
+# in history, pick out policies of other agents
+
+
+

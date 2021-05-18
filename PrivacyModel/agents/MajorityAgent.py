@@ -2,11 +2,12 @@
 
 from mesa import Agent
 import pandas as pd
+from collections import Counter
 
 from . import AgentConstants
 
 
-class BasicAgent(Agent):
+class MajorityAgent(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
         p = self.random.uniform(0, 1)
@@ -96,7 +97,7 @@ class BasicAgent(Agent):
             self.currentAction = AgentConstants.SHARE_PUBLIC
 
         current_companions = self.updateCompanions()
-
+        best_action = self.majorityVote(current_companions, no_value, friends_value, public_value, best_action)
         best_action, reward = self.processCompanions(best_action, current_companions)
 
         # Now set currentAction after looking through companions
@@ -165,7 +166,25 @@ class BasicAgent(Agent):
 
         if reward != 0:
             reward = reward / len(current_companions)
-
         best_action += reward
 
         return best_action, reward
+
+    def majorityVote(self, current_companions, no_value, friends_value, public_value, best_action):
+        action_pool = []
+        for i in current_companions:
+            action_pool.append(i.currentAction)
+
+        freq_dict = Counter(action_pool)
+        for (key, value) in freq_dict.items():
+            if value > len(action_pool) / 2:
+                self.currentAction = key
+                if key == 0:
+                    best_action = no_value
+                elif key == 1:
+                    best_action = friends_value
+                elif key == 2:
+                    best_action = public_value
+                return best_action
+
+        return best_action

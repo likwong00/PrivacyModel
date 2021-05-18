@@ -65,3 +65,8 @@ actions_dict = {
     'SHARE_PUBLIC': [1.5, 2, 0, 0],
 }
 actions = pd.DataFrame(data=actions_dict, index=['pleasure', 'recognition', 'privacy', 'security'])
+
+# PRIVACY TYPES
+CAUTIOUS = 0
+CONSCIENTIOUS = 1
+CASUAL = 2

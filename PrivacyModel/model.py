@@ -9,11 +9,13 @@ import matplotlib.pyplot as plt
 import csv
 
 # Import all the different types of agents
+from agents.RandomAgent import RandomAgent
 from agents.BasicAgent import BasicAgent
 from agents.MajorityAgent import MajorityAgent
 from agents.EpsilonAgent import EpsilonAgent
 
-NUM_OF_AGENTS = 50
+NUM_OF_AGENTS = 20
+
 
 # External metric functions
 def average_happy(model):
@@ -31,12 +33,21 @@ def min_happy(model):
     return min(all_agents)
 
 
+def average_reward(model):
+    reward_agents = [agent.reward for agent in model.schedule.agents]
+    return sum(reward_agents) / NUM_OF_AGENTS
+
+def below_average(model):
+    average = average_happy(model)
+    below_average_agents = [agent.happy for agent in model.schedule.agents if agent.happy < average]
+    return len(below_average_agents)
+
+
 class PrivacyModel(Model):
     """A model with some number of agents."""
 
     def __init__(self, agent_model, N, num_of_friends=6, rewire=0.1):
         self.num_agents = N
-        # self.random.seed(42)
         self.grid = MultiGrid(9, 1, False)
         self.schedule = RandomActivation(self)
         self.running = True
@@ -57,7 +68,9 @@ class PrivacyModel(Model):
         self.datacollector = DataCollector(
             model_reporters={"Average_Happiness": average_happy,
                              "Max_Happiness": max_happy,
-                             "Min_Happiness": min_happy}
+                             "Min_Happiness": min_happy,
+                             "Average_Reward": average_reward,
+                             "Below_Average": below_average}
         )
 
     def step(self):
@@ -68,7 +81,7 @@ class PrivacyModel(Model):
 
 
 def run_simulation(steps, agent_model):
-    num_of_friends = 20
+    num_of_friends = 8
     rewire = 0.3
     model_inst = PrivacyModel(agent_model, NUM_OF_AGENTS, num_of_friends, rewire)
     for i in range(steps):
@@ -80,26 +93,34 @@ def run_simulation(steps, agent_model):
 
 # Function for writing the results of a agent model into a .csv file
 def write_results(df, agent):
-    with open('./results/' + agent + '_results.csv', 'w', newline='') as file:
+    with open('./results/' + agent + '_results5.csv', 'w', newline='') as file:
         i = 0
         writer = csv.writer(file)
         for row in df.iterrows():
-            writer.writerow([i, row[1][0], row[1][1], row[1][2]])
+            writer.writerow([i, row[1][0], row[1][1], row[1][2], row[1][3], row[1][4]])
             i += 1
+
 
 # Main function for running all agent models, then write all their results on their respective .csv files
 def run_all_agents(steps):
-    basic = run_simulation(steps, BasicAgent)
-    write_results(basic, 'basic')
+    # print('random running ...')
+    # random = run_simulation(steps, RandomAgent)
+    # write_results(random, 'random')
+    #
+    # print('basic running ...')
+    # basic = run_simulation(steps, BasicAgent)
+    # write_results(basic, 'basic')
+    #
+    # print('majority running ...')
+    # majority = run_simulation(steps, MajorityAgent)
+    # write_results(majority, 'majority')
 
-    majority = run_simulation(steps, MajorityAgent)
-    write_results(majority, 'majority')
-
+    print('learning running ...')
     learning = run_simulation(steps, EpsilonAgent)
     write_results(learning, 'learning')
 
 
-steps = 1000
+steps = 200
 
 run_all_agents(steps)
 

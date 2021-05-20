@@ -33,6 +33,7 @@ class MajorityAgent(Agent):
         self.currentAction = AgentConstants.SHARE_NO
         self.friends = self.model.relationship.adj[unique_id]
         self.currentCompanions = []
+        self.reward = 0
 
 
     def step(self):
@@ -108,6 +109,7 @@ class MajorityAgent(Agent):
         elif best_action == (public_value + reward):
             self.currentAction = AgentConstants.SHARE_PUBLIC
 
+        self.reward = reward
         # Check if the agent is happy with the action taken
         # best_action is an int from 0 to 40, we determine an agent to be happy if it is greater than 8
         self.happy = best_action
@@ -165,7 +167,7 @@ class MajorityAgent(Agent):
                 reward -= 2
 
         if reward != 0:
-            reward = reward / len(current_companions)
+            reward = (reward * 2) / len(current_companions)
         best_action += reward
 
         return best_action, reward

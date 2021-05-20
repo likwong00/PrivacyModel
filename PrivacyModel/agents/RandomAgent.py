@@ -1,4 +1,4 @@
-# Basic version of agents where they only go for "selfish" actions, meaning they only care about their own preferences
+# Basic version of agents where they select random actions
 
 from mesa import Agent
 import pandas as pd
@@ -6,7 +6,7 @@ import pandas as pd
 from . import AgentConstants
 
 
-class BasicAgent(Agent):
+class RandomAgent(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
         p = self.random.uniform(0, 1)
@@ -84,9 +84,13 @@ class BasicAgent(Agent):
         friends_value = (actions_values.loc[:, 'SHARE_FRIENDS']).sum()
         public_value = (actions_values.loc[:, 'SHARE_PUBLIC']).sum()
 
-        best_action = max(no_value,
-                          friends_value,
-                          public_value)
+        p = self.random.uniform(0, 1)
+        if p <= (1/3):
+            best_action = no_value
+        elif p <= (2/3):
+            best_action = friends_value
+        else:
+            best_action = public_value
 
         # Set an intermediate currentAction for other agents to see what action you've chosen
         if best_action == no_value:

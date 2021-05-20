@@ -5,7 +5,8 @@ import pandas as pd
 
 from . import AgentConstants
 
-from ..model import NUM_OF_AGENTS
+NUM_OF_AGENTS = 20
+
 
 class EpsilonAgent(Agent):
     def __init__(self, unique_id, model):
@@ -39,6 +40,7 @@ class EpsilonAgent(Agent):
         # used later for agents to learn from rewards.
         self.history = pd.DataFrame(columns=['timeStep', 'agentID', 'othersID', 'place',
                                              'action', 'reward', 'happiness'])
+        self.reward = 0
 
     def step(self):
         self.decision()
@@ -90,56 +92,61 @@ class EpsilonAgent(Agent):
         public_value = (actions_values.loc[:, 'SHARE_PUBLIC']).sum()
 
         selfish_action = max(no_value,
-                          friends_value,
-                          public_value)
+                             friends_value,
+                             public_value)
 
         # Set an intermediate currentAction for other agents to see what action you've chosen
-        if selfish_action == no_value:
-            self.currentAction = AgentConstants.SHARE_NO
-        elif selfish_action == friends_value:
-            self.currentAction = AgentConstants.SHARE_FRIENDS
-        elif selfish_action == public_value:
-            self.currentAction = AgentConstants.SHARE_PUBLIC
+        self.changeCurrentAction(no_value, friends_value, public_value, selfish_action)
 
         agent_happiness = [agent.happy for agent in self.model.schedule.agents]
         average_happiness = sum(agent_happiness) / NUM_OF_AGENTS
 
         current_companions, unhappy_companions = self.updateCompanions(average_happiness)
 
-        epsilon_choice = self.epsilon(average_happiness, unhappy_companions, selfish_action, current_companions)
+        epsilon_choice = self.epsilon(average_happiness, unhappy_companions)
 
         if epsilon_choice != 4:
+            epsilon_action = 0
             if epsilon_choice == 0:
                 epsilon_action = no_value
+                self.currentAction = AgentConstants.SHARE_NO
             elif epsilon_choice == 1:
                 epsilon_action = friends_value
+                self.currentAction = AgentConstants.SHARE_FRIENDS
             elif epsilon_choice == 2:
                 epsilon_action = public_value
+                self.currentAction = AgentConstants.SHARE_PUBLIC
             # Check if the epsilon action to help other's happiness is worth it,
             # compare happiness of epsilon action plus the happiness gained by other companions with selfish action
             epsilon_action, reward = self.processCompanions(epsilon_action, current_companions)
-            if epsilon_action + reward > selfish_action:
+            if epsilon_action + reward > selfish_action or self.model.timeStep < 50:
                 best_action = epsilon_action
             else:
                 best_action = selfish_action
+                self.changeCurrentAction(no_value, friends_value, public_value, best_action)
+                best_action, reward = self.processCompanions(best_action, current_companions)
+
         else:
             best_action = selfish_action
+            self.changeCurrentAction(no_value, friends_value, public_value, best_action)
+            best_action, reward = self.processCompanions(best_action, current_companions)
 
-        best_action, reward = self.processCompanions(best_action, current_companions)
-
-        # Now set currentAction after looking through companions
-        if best_action == (no_value + reward):
-            self.currentAction = AgentConstants.SHARE_NO
-        elif best_action == (friends_value + reward):
-            self.currentAction = AgentConstants.SHARE_FRIENDS
-        elif best_action == (public_value + reward):
-            self.currentAction = AgentConstants.SHARE_PUBLIC
+        self.reward = reward
 
         # Check if the agent is happy with the action taken
         # best_action is an int from 0 to 40, we determine an agent to be happy if it is greater than 8
         self.happy = best_action
 
         self.appendHistory(reward)
+
+    # Function for changing currentAction
+    def changeCurrentAction(self, no_value, friends_value, public_value, action):
+        if action == no_value:
+            self.currentAction = AgentConstants.SHARE_NO
+        elif action == friends_value:
+            self.currentAction = AgentConstants.SHARE_FRIENDS
+        elif action == public_value:
+            self.currentAction = AgentConstants.SHARE_PUBLIC
 
     # Function for agents to evaluate their preferences in a given location, returns an array of with attributes of
     # each actions
@@ -196,7 +203,7 @@ class EpsilonAgent(Agent):
                 reward -= 2
 
         if reward != 0:
-            reward = reward / len(current_companions)
+            reward = (reward * 2) / len(current_companions)
 
         action += reward
 
@@ -204,12 +211,13 @@ class EpsilonAgent(Agent):
 
     # Function for adding everything that happened in this time-step into the history dictionary
     def appendHistory(self, reward):
-        self.history.append({'timeStep': self.model.timeStep, 'agentID': self.unique_id,
-                             'othersID': self.currentCompanions, 'place': self.pos, 'action': self.currentAction,
-                             'reward': reward, 'happiness': self.happy}, ignore_index=True)
+        self.history = self.history.append({'timeStep': self.model.timeStep, 'agentID': self.unique_id,
+                                            'othersID': self.currentCompanions, 'place': self.pos,
+                                            'action': self.currentAction,
+                                            'reward': reward, 'happiness': self.happy}, ignore_index=True)
 
     # Function for agents to look into past interactions with other agents to maximise reward
-    def epsilon(self, average_happiness, unhappy_companions, selfish_action, current_companions):
+    def epsilon(self, average_happiness, unhappy_companions):
 
         # Create a temp dataframe for easier accessing
         query_history = pd.DataFrame(columns=['timeStep', 'agentID', 'othersID', 'place',
@@ -217,7 +225,7 @@ class EpsilonAgent(Agent):
 
         i = 0
         # Now lookup past entries of the agent's current companions
-        for query in unhappy_companions:
+        for query in self.currentCompanions:
             for row in self.history.iterrows():
                 if query in row[1]['othersID']:
                     query_history.loc[i] = row[1]
@@ -236,9 +244,11 @@ class EpsilonAgent(Agent):
         # then as more and more time goes by, we decrease that probability
         #
         # Check for rawls condition in exploit phase, if agent is unhappy, break out and do selfish action
-        explore_steps = 200
+        explore_steps = 50
         if self.model.timeStep < explore_steps:
-            interaction_choices.append([0, 1, 2])
+            interaction_choices.append(0)
+            interaction_choices.append(1)
+            interaction_choices.append(2)
         else:
             if self.happy < average_happiness:
                 return 4
@@ -267,9 +277,10 @@ class EpsilonAgent(Agent):
                             continue
 
                     # Calculate the action-value estimates
-                    no_estimate = no_weighting / no_count
-                    friends_estimate = friends_weighting / friends_count
-                    public_estimate = public_weighting / public_count
+                    no_estimate = self.safeDivision(no_weighting, no_count)
+                    friends_estimate = self.safeDivision(friends_weighting, friends_count)
+                    public_estimate = self.safeDivision(public_weighting, public_count)
+
                     best_action = max(no_estimate, friends_estimate, public_estimate)
                     if best_action == no_estimate:
                         interaction_choices.append(0)
@@ -278,7 +289,17 @@ class EpsilonAgent(Agent):
                     elif best_action == public_estimate:
                         interaction_choices.append(2)
 
-                # At the end going through all companions or not having an action in past history, randomly pick one
-                # out of the interaction_choices.
-                action_choice = self.random.choice(interaction_choices)
-                return action_choice
+        # At the end going through all companions or not having an action in past history, randomly pick one
+        # out of the interaction_choices.
+        if not interaction_choices:
+            return 4
+        else:
+            action_choice = self.random.choice(interaction_choices)
+
+            return action_choice
+
+    def safeDivision(self, x, y):
+        if y == 0:
+            return 0
+        else:
+            return x / y

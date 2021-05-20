@@ -16,15 +16,15 @@ SPEED_TICKET = 8
 # Storing attributes for each place
 # format- 'place': [pleasure, recognition, privacy, security]
 places_dict = {
-    'BEACH': [5, 5, 1, 1],
-    'MUSEUM': [4, 4, 2, 2],
-    'COMPANY': [2, 1, 4, 4],
-    'SURGERY': [0, 0, 5, 4],
-    'EXAM': [1, 2, 3, 3],
-    'COMPETITION': [5, 5, 0, 0],
-    'FUNERAL': [0, 1, 4, 5],
-    'TYPHOON': [4, 2, 3, 5],
-    'SPEED_TICKET': [1, 0, 4, 5]
+    'BEACH': [2, 2, -1, -1],
+    'MUSEUM': [1.5, 1.5, 0, 0],
+    'COMPANY': [0, -1, 1.5, 1.5],
+    'SURGERY': [-2, -2, 2, 1.5],
+    'EXAM': [-1.5, 0, 0.5, 0.5],
+    'COMPETITION': [2, 2, -2, -2],
+    'FUNERAL': [-2, -1.5, 1.5, 2],
+    'TYPHOON': [1.5, 0, 0.5, 2],
+    'SPEED_TICKET': [-1.5, -2, 1.5, 2]
 }
 places = pd.DataFrame(data=places_dict, index=['pleasure', 'recognition', 'privacy', 'security'])
 

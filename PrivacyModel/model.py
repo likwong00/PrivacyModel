@@ -103,24 +103,24 @@ def write_results(df, agent):
 
 # Main function for running all agent models, then write all their results on their respective .csv files
 def run_all_agents(steps):
-    # print('random running ...')
-    # random = run_simulation(steps, RandomAgent)
-    # write_results(random, 'random')
-    #
-    # print('basic running ...')
-    # basic = run_simulation(steps, BasicAgent)
-    # write_results(basic, 'basic')
-    #
-    # print('majority running ...')
-    # majority = run_simulation(steps, MajorityAgent)
-    # write_results(majority, 'majority')
+    print('random running ...')
+    random = run_simulation(steps, RandomAgent)
+    write_results(random, 'random')
+
+    print('basic running ...')
+    basic = run_simulation(steps, BasicAgent)
+    write_results(basic, 'basic')
+
+    print('majority running ...')
+    majority = run_simulation(steps, MajorityAgent)
+    write_results(majority, 'majority')
 
     print('learning running ...')
     learning = run_simulation(steps, EpsilonAgent)
     write_results(learning, 'learning')
 
 
-steps = 200
+steps = 20
 
 run_all_agents(steps)
 

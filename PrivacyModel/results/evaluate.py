@@ -40,6 +40,7 @@ learning_results2 = pd.read_csv("learning_results/learning_results2.csv")
 learning_results3 = pd.read_csv("learning_results/learning_results3.csv")
 learning_results4 = pd.read_csv("learning_results/learning_results4.csv")
 learning_results5 = pd.read_csv("learning_results/learning_results5.csv")
+learning_results6 = pd.read_csv("learning_results/learning_results6.csv")
 
 learning_results_total = pd.concat([learning_results1, learning_results2, learning_results3, learning_results4,
                                     learning_results5])
@@ -47,38 +48,38 @@ learning_results_mean = learning_results_total.groupby(learning_results_total.in
 
 # plotting each model with each other for each metric
 average_social_experience = pd.DataFrame(data={'Time Step': learning_results_mean["0"],
-                                               'Random': random_results_mean["0.0"],
-                                               'Selfish': basic_results_mean["0.0"],
-                                               'Majority': majority_results_mean["0.0"],
-                                               'SIPA': learning_results_mean["0.0"]},
+                                               'Random': random_results_mean["0.0"].rolling(window=10).mean(),
+                                               'Selfish': basic_results_mean["0.0"].rolling(window=10).mean(),
+                                               'Majority': majority_results_mean["0.0"].rolling(window=10).mean(),
+                                               'SIPA': learning_results_mean["0.0"].rolling(window=10).mean()},
                                          columns=['Time Step', 'Random', 'Selfish', 'Majority', 'SIPA'])
 
 max_social_experience = pd.DataFrame(data={'Time Step': learning_results_mean["0"],
-                                           'Random': random_results_mean["0.0.1"],
-                                           'Selfish': basic_results_mean["0.0.1"],
-                                           'Majority': majority_results_mean["0.0.1"],
-                                           'SIPA': learning_results_mean["0.0.1"]},
+                                           'Random': random_results_mean["0.0.1"].rolling(window=10).mean(),
+                                           'Selfish': basic_results_mean["0.0.1"].rolling(window=10).mean(),
+                                           'Majority': majority_results_mean["0.0.1"].rolling(window=10).mean(),
+                                           'SIPA': learning_results6["0.0.1"].rolling(window=10).mean()},
                                      columns=['Time Step', 'Random', 'Selfish', 'Majority', 'SIPA'])
 
 min_social_experience = pd.DataFrame(data={'Time Step': learning_results_mean["0"],
-                                           'Random': random_results_mean["0.0.2"],
-                                           'Selfish': basic_results_mean["0.0.2"],
-                                           'Majority': majority_results_mean["0.0.2"],
-                                           'SIPA': learning_results_mean["0.0.2"]},
+                                           'Random': random_results_mean["0.0.2"].rolling(window=10).mean(),
+                                           'Selfish': basic_results_mean["0.0.2"].rolling(window=10).mean(),
+                                           'Majority': majority_results_mean["0.0.2"].rolling(window=10).mean(),
+                                           'SIPA': learning_results_mean["0.0.2"].rolling(window=10).mean()},
                                      columns=['Time Step', 'Random', 'Selfish', 'Majority', 'SIPA'])
 
 average_reward = pd.DataFrame(data={'Time Step': learning_results_mean["0"],
-                                    'Random': random_results_mean["0.0.3"],
-                                    'Selfish': basic_results_mean["0.0.3"],
-                                    'Majority': majority_results_mean["0.0.3"],
-                                    'SIPA': learning_results_mean["0.0.3"]},
+                                    'Random': random_results_mean["0.0.3"].rolling(window=10).mean(),
+                                    'Selfish': basic_results_mean["0.0.3"].rolling(window=10).mean(),
+                                    'Majority': majority_results_mean["0.0.3"].rolling(window=10).mean(),
+                                    'SIPA': learning_results_mean["0.0.3"].rolling(window=10).mean()},
                               columns=['Time Step', 'Random', 'Selfish', 'Majority', 'SIPA'])
 
 below_average = pd.DataFrame(data={'Time Step': learning_results_mean["0"],
-                                   'Random': random_results_mean["0.0.4"],
-                                   'Selfish': basic_results_mean["0.0.4"],
-                                   'Majority': majority_results_mean["0.0.4"],
-                                   'SIPA': learning_results_mean["0.0.4"]},
+                                   'Random': random_results_mean["0.0.4"].rolling(window=10).mean(),
+                                   'Selfish': basic_results_mean["0.0.4"].rolling(window=10).mean(),
+                                   'Majority': majority_results_mean["0.0.4"].rolling(window=10).mean(),
+                                   'SIPA': learning_results_mean["0.0.4"].rolling(window=10).mean()},
                              columns=['Time Step', 'Random', 'Selfish', 'Majority', 'SIPA'])
 
 # filter after 50 time steps

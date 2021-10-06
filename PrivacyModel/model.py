@@ -42,6 +42,14 @@ def below_average(model):
     below_average_agents = [agent.happy for agent in model.schedule.agents if agent.happy < average]
     return len(below_average_agents)
 
+def happy_individual(model):
+    individual_agents = [agent.happy for agent in model.schedule.agents]
+    return individual_agents
+
+def agent_privacy(model):
+    all_agents = [agent.privacyType for agent in model.schedule.agents]
+    return all_agents
+
 
 class PrivacyModel(Model):
     """A model with some number of agents."""
@@ -66,11 +74,13 @@ class PrivacyModel(Model):
             random_place = self.random.randint(0, 8)
             self.grid.place_agent(a, (random_place, 0))
         self.datacollector = DataCollector(
-            model_reporters={"Average_Happiness": average_happy,
-                             "Max_Happiness": max_happy,
-                             "Min_Happiness": min_happy,
-                             "Average_Reward": average_reward,
-                             "Below_Average": below_average}
+            # model_reporters={"Average_Happiness": average_happy,
+            #                  "Max_Happiness": max_happy,
+            #                  "Min_Happiness": min_happy,
+            #                  "Average_Reward": average_reward,
+            #                  "Below_Average": below_average}
+            model_reporters={"Individual_Happiness": happy_individual,
+                             "Agent_Privacy": agent_privacy}
         )
 
     def step(self):
@@ -93,11 +103,28 @@ def run_simulation(steps, agent_model):
 
 # Function for writing the results of a agent model into a .csv file
 def write_results(df, agent):
-    with open('./results/' + agent + '_results5.csv', 'w', newline='') as file:
+    with open('./results/' + agent + '_inidividual_results2.csv', 'w', newline='') as file:
         i = 0
         writer = csv.writer(file)
+
+
         for row in df.iterrows():
-            writer.writerow([i, row[1][0], row[1][1], row[1][2], row[1][3], row[1][4]])
+            #writer.writerow([i, row[1][0], row[1][1], row[1][2], row[1][3], row[1][4]])
+            #writer.writerow([i, row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10],
+                             #row[11], row[12], row[13], row[14], row[15], row[16], row[17], row[18], row[19]])
+            if i == 0:
+                array = np.array_split(row[1][1], 20)
+                writer.writerow([i, array[0][0], array[1][0], array[2][0], array[3][0], array[4][0], array[5][0],
+                                 array[6][0], array[7][0], array[8][0], array[9][0], array[10][0], array[11][0],
+                                 array[12][0], array[13][0], array[14][0], array[15][0], array[16][0], array[17][0],
+                                 array[18][0], array[19][0]])
+            else:
+                # Splitting arr into ints
+                array = np.array_split(row[1][0], 20)
+                writer.writerow([i, array[0][0], array[1][0], array[2][0], array[3][0], array[4][0], array[5][0],
+                                 array[6][0], array[7][0], array[8][0], array[9][0], array[10][0], array[11][0],
+                                 array[12][0], array[13][0], array[14][0], array[15][0], array[16][0], array[17][0],
+                                 array[18][0], array[19][0]])
             i += 1
 
 
@@ -120,7 +147,7 @@ def run_all_agents(steps):
     write_results(learning, 'learning')
 
 
-steps = 20
+steps = 200
 
 run_all_agents(steps)
 

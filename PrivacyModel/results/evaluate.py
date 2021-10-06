@@ -112,3 +112,5 @@ average_reward.plot(x="Time Step", ylabel="Reward (Sanctions) Received");
 below_average.plot(x="Time Step", ylabel="Number of Agents with Social Experience Lower Than Average")
 
 plt.show()
+
+

@@ -50,6 +50,10 @@ def agent_privacy(model):
     all_agents = [agent.privacyType for agent in model.schedule.agents]
     return all_agents
 
+def location_agents(model):
+    all_agents = [agent.pos for agent in model.schedule.agents]
+    return all_agents
+
 
 class PrivacyModel(Model):
     """A model with some number of agents."""
@@ -59,6 +63,11 @@ class PrivacyModel(Model):
         self.grid = MultiGrid(9, 1, False)
         self.schedule = RandomActivation(self)
         self.running = True
+        # Using random seeds for replicating results (100, 101, 102)
+        self.random.seed(102)
+
+        # Setting privacy type of all agents (-1 for spread, 0-2 for fixed)
+        self.privacyPopulation = 2
 
         # Initialise relationship between agents as a Watts-Strogatz graph
         self.relationship = nx.watts_strogatz_graph(N, num_of_friends, rewire)
@@ -103,7 +112,7 @@ def run_simulation(steps, agent_model):
 
 # Function for writing the results of a agent model into a .csv file
 def write_results(df, agent):
-    with open('./results/' + agent + '_inidividual_results2.csv', 'w', newline='') as file:
+    with open('./results/' + agent + '_casual_results.csv', 'w', newline='') as file:
         i = 0
         writer = csv.writer(file)
 

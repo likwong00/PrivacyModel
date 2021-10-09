@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import ttest_rel
+import seaborn as sns
 
 plt.close("all")
 
@@ -99,17 +100,57 @@ test3 = ttest_rel(learning_results_mean["0.0.2"], majority_results_mean["0.0.2"]
 test4 = ttest_rel(learning_results_mean["0.0.3"], majority_results_mean["0.0.3"], alternative='greater')
 test5 = ttest_rel(learning_results_mean["0.0.4"], majority_results_mean["0.0.4"], alternative='less')
 
-# print(test1)
-# print(test2)
-# print(test3)
-# print(test4)
-# print(test5)
-
 average_social_experience.plot(x="Time Step", ylabel="Social Experience");
 max_social_experience.plot(x="Time Step", ylabel="Social Experience");
 min_social_experience.plot(x="Time Step", ylabel="Social Experience");
 average_reward.plot(x="Time Step", ylabel="Reward (Sanctions) Received");
 below_average.plot(x="Time Step", ylabel="Number of Agents with Social Experience Lower Than Average")
+
+indiv_basic_results1 = pd.read_csv("individual_results/basic_inidividual_results2.csv")
+indiv_basic_results2 = pd.read_csv("individual_results/basic_inidividual_results3.csv")
+indiv_basic_results2 = indiv_basic_results2.iloc[1:, :]
+indiv_basic_results3 = pd.read_csv("individual_results/basic_inidividual_results4.csv")
+indiv_basic_results3 = indiv_basic_results3.iloc[1:, :]
+indiv_basic = pd.concat([indiv_basic_results1, indiv_basic_results2, indiv_basic_results3])
+indiv_basic_mean = indiv_basic.mean(axis=0)
+indiv_basic_mean.pop('0')
+
+indiv_learning_results1 = pd.read_csv("individual_results/learning_inidividual_results2.csv")
+indiv_learning_results2 = pd.read_csv("individual_results/learning_inidividual_results3.csv")
+indiv_learning_results2 = indiv_learning_results2.iloc[1:, :]
+indiv_learning_results3 = pd.read_csv("individual_results/learning_inidividual_results4.csv")
+indiv_learning_results3 = indiv_learning_results3.iloc[1:, :]
+indiv_learning = pd.concat([indiv_learning_results1, indiv_learning_results2, indiv_learning_results3])
+indiv_learning_mean = indiv_learning.mean(axis=0)
+indiv_learning_mean.pop('0')
+
+indiv_majority_results1 = pd.read_csv("individual_results/majority_inidividual_results2.csv")
+indiv_majority_results2 = pd.read_csv("individual_results/majority_inidividual_results3.csv")
+indiv_majority_results2 = indiv_majority_results2.iloc[1:, :]
+indiv_majority_results3 = pd.read_csv("individual_results/majority_inidividual_results4.csv")
+indiv_majority_results3 = indiv_majority_results3.iloc[1:, :]
+indiv_majority = pd.concat([indiv_majority_results1, indiv_majority_results2, indiv_majority_results3])
+indiv_majority_mean = indiv_majority.mean(axis=0)
+indiv_majority_mean.pop('0')
+
+indiv_random_results1 = pd.read_csv("individual_results/random_inidividual_results2.csv")
+indiv_random_results2 = pd.read_csv("individual_results/random_inidividual_results3.csv")
+indiv_random_results2 = indiv_random_results2.iloc[1:, :]
+indiv_random_results3 = pd.read_csv("individual_results/random_inidividual_results4.csv")
+indiv_random_results3 = indiv_random_results3.iloc[1:, :]
+indiv_random = pd.concat([indiv_random_results1, indiv_random_results2, indiv_random_results3])
+indiv_random_mean = indiv_random.mean(axis=0)
+indiv_random_mean.pop('0')
+
+print(indiv_random_mean)
+
+indiv_violin = pd.DataFrame(data={'Random': indiv_random_mean,
+                                  'Selfish': indiv_basic_mean,
+                                  'Majority': indiv_majority_mean,
+                                  'SIPA': indiv_learning_mean},
+                            columns=['Random', 'Selfish', 'Majority', 'SIPA'])
+sns.set_theme(style="whitegrid")
+ax = sns.violinplot(data=indiv_violin)
 
 plt.show()
 

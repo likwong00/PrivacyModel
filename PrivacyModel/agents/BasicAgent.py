@@ -9,20 +9,39 @@ from . import AgentConstants
 class BasicAgent(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
-        p = self.random.uniform(0, 1)
-        if p <= 0.455:
+        if self.model.privacyPopulation == -1:
+            p = self.random.uniform(0, 1)
+            if p <= 0.455:
+                self.privacyType = AgentConstants.CAUTIOUS
+                self.pleasure = 0.1
+                self.recognition = 0.2
+                self.privacy = 1
+                self.security = 0.7
+            elif p <= 0.818:
+                self.privacyType = AgentConstants.CONSCIENTIOUS
+                self.pleasure = 0.4
+                self.recognition = 0.6
+                self.privacy = 0.5
+                self.security = 0.6
+            else:
+                self.privacyType = AgentConstants.CASUAL
+                self.pleasure = 1
+                self.recognition = 0.7
+                self.privacy = 0
+                self.security = 0.3
+        elif self.model.privacyPopulation == 0:
             self.privacyType = AgentConstants.CAUTIOUS
             self.pleasure = 0.1
             self.recognition = 0.2
             self.privacy = 1
             self.security = 0.7
-        elif p <= 0.818:
+        elif self.model.privacyPopulation == 1:
             self.privacyType = AgentConstants.CONSCIENTIOUS
             self.pleasure = 0.4
             self.recognition = 0.6
             self.privacy = 0.5
             self.security = 0.6
-        else:
+        elif self.model.privacyPopulation == 2:
             self.privacyType = AgentConstants.CASUAL
             self.pleasure = 1
             self.recognition = 0.7
